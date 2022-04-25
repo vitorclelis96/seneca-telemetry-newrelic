@@ -3,21 +3,15 @@
 const Seneca = require('seneca')
 
 
-// const NewRelicAPI = ???
-
 const sleep = (millis) => new Promise(r=>setTimeout(r,millis))
 
 let s01 = Seneca()
     .test()
     .use('promisify')
 
-// Use msg.x to validate correct message called
-
 // Basic message 
     .message('m:1', async function m1(msg) {
-      // NewRelic start?
       await sleep(100)
-      // NewRelic end?
       return {k: 3 * msg.k}
     })
 
