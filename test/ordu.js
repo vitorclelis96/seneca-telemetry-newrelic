@@ -16,14 +16,14 @@ let s01 = Seneca()
     })
 
 s01.order.inward.add(spec=>{
-  if(spec.data.msg.a) {
+  if(spec.data.msg.m) {
     console.log('MSG INWARD', spec.data.msg, Date.now())
   }
 })
 
 
 s01.order.outward.add(spec=>{
-  if(spec.data.msg.a) {
+  if(spec.data.msg.m) {
     console.log('MSG OUTWARD', spec.data.msg, Date.now())
   }
 })
