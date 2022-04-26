@@ -2,12 +2,12 @@
 
 import * as Fs from 'fs'
 
-import TrelloProvider from '../src/trello-provider'
+import NewrelicProvider from '../src/newrelic-provider';
 
 
 const Seneca = require('seneca')
 const SenecaMsgTest = require('seneca-msg-test')
-const TrelloProviderMessages = require('./trello-provider.messages').default
+const NewrelicProviderMessages = require('./newrelic-provider.messages').default
 
 const CONFIG: any = {}
 let missingKeys = true
@@ -18,12 +18,13 @@ if (Fs.existsSync(__dirname + '/local-config.js')) {
 
 jest.setTimeout(10000)
 
-describe('trello-provider', () => {
+describe('newrelic-provider', () => {
 
     test('happy', async () => {
         const seneca = Seneca({legacy: false})
             .test()
             .use('promisify')
+            /*
             .use('provider', {
                 provider: {
                     trello: {
@@ -41,7 +42,8 @@ describe('trello-provider', () => {
                     }
                 }
             })
-            .use(TrelloProvider)
+            */
+            .use(NewrelicProvider)
         await seneca.ready()
     })
 
@@ -67,8 +69,8 @@ describe('trello-provider', () => {
                     }
                 }
             })
-            .use(TrelloProvider)
-        await (SenecaMsgTest(seneca, TrelloProviderMessages)())
+            .use(NewrelicProvider)
+        await (SenecaMsgTest(seneca, NewrelicProviderMessages)())
     })
 
 
@@ -91,10 +93,10 @@ describe('trello-provider', () => {
                         }
                     }
                 })
-                .use(TrelloProvider)
+                .use(NewrelicProvider)
             await seneca.ready()
 
-            let native = seneca.export('TrelloProvider/native')
+            let native = seneca.export('NewrelicProvider/native')
             expect(native().trello).toBeDefined()
         }
     })
@@ -120,11 +122,11 @@ describe('trello-provider', () => {
                         }
                     }
                 })
-                .use(TrelloProvider)
+                .use(NewrelicProvider)
             const cardAndBoardId = CONFIG.boardId + "/" + CONFIG.cardId
             let card = await seneca.entity('provider/trello/card')
                 .load$(cardAndBoardId)
-            await (SenecaMsgTest(seneca, TrelloProviderMessages)())
+            await (SenecaMsgTest(seneca, NewrelicProviderMessages)())
             expect(card).toBeDefined()
             expect(card.id).toEqual(CONFIG.cardId)
             expect(card.entity$).toBe('provider/trello/card')
@@ -154,7 +156,7 @@ describe('trello-provider', () => {
                 .use('promisify')
                 .use('entity')
                 .use('provider', provider_options)
-                .use(TrelloProvider)
+                .use(NewrelicProvider)
 
             const cardAndBoardId = CONFIG.boardId + "/" + CONFIG.cardId
             let card = await seneca.entity('provider/trello/card')

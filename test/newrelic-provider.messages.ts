@@ -2,13 +2,13 @@
 
 export default {
     print: false,
-    pattern: 'sys:provider,provider:trello',
+    pattern: 'sys:provider,provider:newrelic',
     allow: {missing: true},
 
     calls: [
         {
             pattern: 'get:info',
-            out: {ok: true, details: {sdk: 'trello'}},
+            out: {ok: true, details: {sdk: 'newrelic'}},
         }
     ]
 }
