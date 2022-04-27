@@ -3,7 +3,7 @@
 const Seneca = require('seneca')
 const newrelic = require('newrelic')
 
-function newSegmentWrapper(actionCb) {
+function newSegment(actionCb) {
   return async function action(msg, meta) {
     const seneca = this
     try {
