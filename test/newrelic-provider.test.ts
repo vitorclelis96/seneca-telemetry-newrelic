@@ -3,6 +3,7 @@
 import * as Fs from 'fs'
 
 import NewrelicProvider from '../src/newrelic-provider';
+import PluginTestProvider from './fixtures/PluginTestProvider';
 
 
 const Seneca = require('seneca')
@@ -24,7 +25,6 @@ describe('newrelic-provider', () => {
         const seneca = Seneca({legacy: false})
             .test()
             .use('promisify')
-            /*
             .use('provider', {
                 provider: {
                     trello: {
@@ -42,7 +42,6 @@ describe('newrelic-provider', () => {
                     }
                 }
             })
-            */
             .use(NewrelicProvider)
         await seneca.ready()
     })
@@ -73,6 +72,34 @@ describe('newrelic-provider', () => {
         await (SenecaMsgTest(seneca, NewrelicProviderMessages)())
     })
 
+    test('plugin-test-provider', async () => {
+        const seneca = Seneca({legacy: false})
+            .test()
+            .use('promisify')
+            .use('provider', {
+                provider: {
+                    trello: {
+                        keys: {
+                            api: {
+                                value: CONFIG.key,
+                            },
+                            user: {
+                                value: CONFIG.token
+                            },
+                            test: {
+                                value: missingKeys
+                            }
+                        }
+                    }
+                }
+            })
+            .use(NewrelicProvider)
+            .use(PluginTestProvider);
+
+            const x = await seneca.post('sys:provider,provider:other,get:info')
+            console.log(x)
+    })
+
 
     test('native', async () => {
         if (!missingKeys) {
@@ -100,7 +127,6 @@ describe('newrelic-provider', () => {
             expect(native().trello).toBeDefined()
         }
     })
-
 
     test('entity-load', async () => {
         if (!missingKeys) {
