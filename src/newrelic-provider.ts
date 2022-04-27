@@ -8,6 +8,22 @@ function NewrelicProvider(this: any, _options: any) {
 
     // NOTE: sys- zone prefix is reserved.
 
+    seneca.order.inward.add(({ data }: { data: any}) => {
+        const { meta } = data;
+        const { id, pattern, action, start } = meta;
+        console.log('inward', id, pattern, action, start);
+    })
+
+    // seneca.order.outward
+    seneca.order.outward.add(({ data }: { data: any}) => {
+        console.log(data);
+        const { meta } = data;
+        const { id, pattern, action, start, end } = meta;
+        // const finish = Date.now();
+        // const timeItTook = finish - start;
+        console.log('outward', id, pattern, action, end);
+    })
+
     seneca
         .message('sys:provider,provider:newrelic,get:info', get_info)
 
@@ -42,11 +58,24 @@ const defaults: NewRelicProviderOptions = {
     debug: false
 }
 
+function preload_newrelic(plugin) {
+    /*
+    const self = this;
+    console.log('here', this);
+    console.log(plugin);
+    */
+}
+
+export const extras = {
+    preload: preload_newrelic
+}
+
 
 Object.assign(NewrelicProvider, {defaults})
 
 export default NewrelicProvider
 
 if ('undefined' !== typeof (module)) {
-    module.exports = NewrelicProvider
+    module.exports = NewrelicProvider;
+    module.exports.preload = preload_newrelic;
 }
