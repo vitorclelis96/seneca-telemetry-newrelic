@@ -21,7 +21,7 @@ function startTransaction(actionCb) {
     const seneca = this
     try {
       return newrelic.startBackgroundTransaction(meta.action, 'actions', async () => {
-        return actionCb.bind(seneca)(msg, meta);
+        return actionCb.bind(seneca)(msg, meta)
       })
     } catch (error) {
       console.log(error)
@@ -69,63 +69,60 @@ let s01 = Seneca()
 
 
 // Basic message 
-    .message('a:1', startTransaction(
-      async function a1(msg, meta) {
-        console.log(meta)
-        await sleep(100)
-        return {x:msg.x}
-      }
-    ))
+    .message('a:1', async function a1(msg, meta) {
+      const t = transaction(meta)
+      t.start()
+      await sleep(200)
+      t.end()
+      return {x:msg.x}
+    })
 
 // Message with child
-    .message('b:1', startTransaction(
-      async function b1(msg, meta) {
-        // NewRelic start?
-        actionStart(meta)
-  
-        await sleep(100)
-        let a1 = await this.post('a:1',{x:msg.x})
-        let x = 1 + a1.x
-  
-        // NewRelic end?
-        actionStart(meta)
-  
-        return {x}
-      }
-    ))
+    .message('b:1', async function b1(msg, meta) {
+      // NewRelic start?
+      const t = transaction(meta)
+      t.start()
+
+      await sleep(100)
+      let a1 = await this.post('a:1',{x:msg.x})
+      let x = 1 + a1.x
+
+      // NewRelic end?
+      t.end()
+
+      return {x}
+    })
 
 // Message with prior
-    .message('c:1', startTransaction(
-      async function c1(msg, meta) {
-        // NewRelic start?
-        actionStart(meta)
-  
-        await sleep(100)
-  
-        // NewRelic end?
-        actionEnd(meta)
-        
-        return {x: 2 + msg.x}
-      }
-    ))
+    .message('c:1', async function c1(msg, meta) {
+      // NewRelic start?
+      const t = transaction(meta)
+      t.start()
+
+      await sleep(100)
+
+      // NewRelic end?
+      t.end()
+      
+      return {x: 2 + msg.x}
+    })
 
 // Message with prior
-    .message('c:1', startTransaction(
-      async function c1p(msg, meta) {
-        // NewRelic start?
-        actionStart(meta)
-  
-        await sleep(100)
-        msg.x = 2 * msg.x
-  
-        let out = await this.prior(msg)
-  
-        // NewRelic end?
-        actionEnd(meta)
-        
-        return out
-      }
-    ))
+    .message('c:1', async function c1p(msg, meta) {
+      // NewRelic start?
+      const t = transaction(meta)
+      t.start()
+
+      await sleep(1500)
+      msg.x = 2 * msg.x
+
+      let out = await this.prior(msg)
+
+      // NewRelic end?
+      t.end()
+      
+      return out
+    })
 
 
 run(s01)
