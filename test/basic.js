@@ -29,6 +29,32 @@ function startTransaction(actionCb) {
   }
 }
 
+function transaction(meta) {
+  let transaction;
+
+  function start() {
+    return newrelic.startBackgroundTransaction(meta.action, 'foobar', () => {
+      console.log(`start transaction ${meta.action}`)
+      transaction = newrelic.getTransaction()
+      return
+    })
+  }
+
+  function end() {
+    if(!transaction) {
+      throw new Error('transaction not started')
+    }
+    console.log(`end transaction ${meta.action}`)
+    transaction.end()
+    return
+  }
+
+  return {
+    start,
+    end
+  }
+}
+
 
 // const NewRelicAPI = ???
 
