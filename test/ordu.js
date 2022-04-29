@@ -1,8 +1,6 @@
 
 
-const { spawnSync } = require('child_process')
 const Seneca = require('seneca')
-const { createTextChangeRange } = require('typescript')
 
 
 const sleep = (millis) => new Promise(r=>setTimeout(r,millis))
