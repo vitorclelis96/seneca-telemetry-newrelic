@@ -33,11 +33,13 @@ const extractFromSpec = (spec, event) => {
     id: spec.data.meta.id,
     tx_id: spec.data.meta.tx,
     mi_id: spec.data.meta.mi,
-    plugin_name: spec.ctx.actdef.plugin_fullname,
-    pattern: spec.ctx.actdef.pattern,
     msg: JSON.stringify(spec.data.msg),
-
   }
+  if (spec.ctx.actdef) {
+    metadata.plugin_name = spec.ctx.actdef.plugin_fullname;
+    metadata.pattern = spec.ctx.actdef.pattern;
+  }
+
   if (event === 'outward') {
     metadata.duration = spec.ctx.duration;
     metadata.endTime = spec.data.meta.end;
@@ -77,20 +79,33 @@ const updateSpecList = (specMetadata) => {
   }
 }
 
+
+// ctx.seneca.fixedargs.fatal$
+// ctx.origmsg.local
+
+
 s01.order.inward.add(spec=>{
+  const specMetadata = extractFromSpec(spec, 'inward');
+    updateSpecList(specMetadata);
+  /*
+  console.log(JSON.stringify(spec));
   if(spec.data.msg.m) {
     const specMetadata = extractFromSpec(spec, 'inward');
     updateSpecList(specMetadata);
   }
+  */
 })
 
 
 s01.order.outward.add(spec=>{
+  const specMetadata = extractFromSpec(spec, 'outward');
+  updateSpecList(specMetadata);
+  /*
   if(spec.data.msg.m) {
     const specMetadata = extractFromSpec(spec, 'outward');
     updateSpecList(specMetadata);
-    // console.log(JSON.stringify(specList));
   }
+  */
 })
 
 /*
@@ -161,10 +176,11 @@ Simple example:
 */
 
 
-s01.act('m:1,k:2', Seneca.util.print) // { k: 6 }
+s01.act('m:1,k:2', (msg) => {
+  console.log(JSON.stringify(specList))
+}) // { k: 6 }
 
 
-s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 
+// s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 
-console.log(1651168356392 > 1651168356248)

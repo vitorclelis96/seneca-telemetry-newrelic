@@ -109,3 +109,5 @@ yarn.lock
 
 test/local-config.js
 
+# Newrelic personal config
+newrelic.js

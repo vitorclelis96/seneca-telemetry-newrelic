@@ -1,7 +1,5 @@
-
-
-const Seneca = require('seneca')
 const newrelic = require('newrelic')
+const Seneca = require('seneca')
 
 function newSegment(actionCb) {
   return async function action(msg, meta) {
