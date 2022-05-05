@@ -54,6 +54,7 @@
     "seneca-promisify": ">=2"
   },
   "dependencies": {
+    "@newrelic/telemetry-sdk": "^0.6.0",
     "newrelic": "^8.10.0",
     "trello": "^0.11.0"
   }

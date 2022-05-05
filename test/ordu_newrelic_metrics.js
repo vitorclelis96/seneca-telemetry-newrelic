@@ -1,63 +1,35 @@
-
-/*
-  There's two types of general transactions:
-    Web Transactions
-    Background Transactions
-
-  How/when to instantiate an transaction, and then finish it?
-
-  Try to group by pattern,
-    have a class to manage the data
-    and a class to consume the data.
-    Like a pub/sub
-
-  O que tem que acontecer na vdd:
-  Ter uma lista de objetos com chamadas,
-  Quando iniciar, dar um transaction,
-  quando terminar, finalizar o objeto e dar transaction.end()
-  Pelo que ue entendi a transaction é singleton
-
-  Estudar, ver video.
-
-  The issue is:
-    All inwards run before outwards, and I believe the transaction object
-    is a singleton, so there's no way to keep state from that
-
-})
-*/
-
-/*
-class TelemetryCollector {
-
-}
-*/
 const newrelic = require('newrelic')
 const Seneca = require('seneca')
 
-function Transaction(specMetadata) {
-    let transaction;
-  
-    function start() {
-      return newrelic.startBackgroundTransaction(specMetadata.pattern, specMetadata.id, () => {
-        transaction = newrelic.getTransaction()
-        return
-      })
+const { MetricBatch, SummaryMetric, MetricClient} = require('@newrelic/telemetry-sdk').telemetry.metrics
+
+// create our client using the metrics API key
+const newrelicMetricClient = new MetricClient({
+    apiKey: 'd2f92475f00f51add8f4b3e3235982a03990NRAL',
+});
+
+/*
+const sumMetric = new SummaryMetric()
+
+sumMetric.record();
+
+const batch = new MetricBatch(
+    {},
+    Date.now(),
+    1000
+);
+
+batch.addMetric(sumMetric);
+
+newrelicMetricClient.send(batch, (err, res, body) => {
+    if (err) {
+        console.log(err);
     }
-  
-    function end() {
-      if(!transaction) {
-        throw new Error('transaction not started')
-      }
-      console.log(`end transaction ${meta.action}`)
-      transaction.end()
-      return
-    }
-  
-    return {
-      start,
-      end
-    }
-  }
+    console.log(res.statusCode);
+})
+*/
+console.log(process.memoryUsage());
+newrelic.recordCustomEvent('LelisVitor', process.memoryUsage());
 
 const TelemetryCollector = {
     defaultTime: 5000,
@@ -94,51 +66,38 @@ const TelemetryCollector = {
                 spec.stackList.push(specMetadata);
             }
         } else {
-            /*
-            this.bootTransaction(specMetadata)
-                .then((transaction) => {
-                    this.specList.push({
-                        tx_id: specMetadata.tx_id,
-                        stackList: [specMetadata],
-                        transaction: transaction,
-                    });
-                })
-            */
             this.specList.push({
                 tx_id: specMetadata.tx_id,
                 stackList: [specMetadata],
             });
         }
     },
-    async bootTransaction(specMetadata) {
-        return new Promise((resolve, reject) => {
-            const { pattern, id } = specMetadata;
-            const name = pattern ?? "TEST"; // TODO
-            newrelic.startBackgroundTransaction(name, id, () => {
-                const transaction = newrelic.getTransaction();
-                // console.log(transaction)
-                resolve(transaction);
-            })
+    doSummaryTest() {
+        const batch = new MetricBatch(
+            {},
+            Date.now(),
+            1000
+        );
+        this.specList.forEach((s) => {
+            newrelic.recordCustomEvent('Custom/Lelis/Vitor', s);
+        })
+        // console.log(this.specList)
+        const sumMetrics = this.specList.map((s) => new SummaryMetric('Custom/Vitor/Lelis', {
+            count: 1
+        }))
+        sumMetrics.forEach((s) => {
+            s.record();
+            batch.addMetric(s);
+        })
+        newrelicMetricClient.send(batch, (err, res, body) => {
+            if (err) {
+                console.log(err)
+            } else {
+                console.log(res.statusCode)
+                console.log(body)
+            }
         })
     },
-    async testTransaction(specMetadata) {
-        return new Promise((resolve, reject) => {
-            const { pattern, id } = specMetadata;
-            const name = pattern ?? "TEST"; // TODO
-            newrelic.startBackgroundTransaction(name, id, async () => {
-                const transaction = newrelic.getTransaction();
-                await sleep(1000);
-                // newrelic.recordMetric('vitor_metric', specMetadata);
-                transaction.end();
-                resolve(true);
-            })
-        })
-    },
-    async testCloseAll() {
-        this.specList.forEach(async (s) => {
-            await this.testTransaction(s);
-        })
-    }
 }
 
 
@@ -179,14 +138,6 @@ s01.order.outward.add(spec=>{
   const specMetadata = TelemetryCollector.extractFromSpec(spec, 'outward');
   TelemetryCollector.updateSpecList(specMetadata);
 })
-
-/*
-  Things I've discovered:
-    inward and outward .add functions get called several times.
-    All inwards run before the first outward
-    Inward hooks runs before a function gets executed, and the outward hook
-      runs after a function finishes.
-*/
 
 /*
 Simple example:
@@ -255,4 +206,7 @@ s01.act('m:1,k:2', (msg) => {
 // s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 
 
+setTimeout(() => {
+    TelemetryCollector.doSummaryTest();
+}, 5000)
 
