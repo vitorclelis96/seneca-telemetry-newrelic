@@ -1,7 +1,99 @@
+const { exec } = require('child_process');
+const newrelic = require('newrelic');
+const { stderr } = require('process');
+const Seneca = require('seneca');
 
+// Test function
+function sendCurl(eventType, specList) {
+  specList.forEach((s) => {
+    const tx_id = s.tx_id;
+    s.stackList.forEach((sL) => {
+      const obj = {
+        ...sL,
+        tx_id,
+        res: JSON.stringify(sL.res),
+        finished_at: sL.endTime,
+        started_at: sL.startTime,
+        eventType: 'DoTestSt',
+      }
+      delete obj.endTime;
+      delete obj.startTime;
+      /*
+        MELHORAR ISSO AQUI
+      */
+     const accountApiKey = "YOUR API KEY";
+     const accountId = "3487050";
+     const objStr = JSON.stringify(obj);
+     const curlStr = `curl -X POST -H "Content-Type: application/json" -H "Api-Key: ${accountApiKey}" https://insights-collector.newrelic.com/v1/accounts/${accountId}/events -d '${objStr}'`;
+     exec(curlStr, (err, stdout, stderr) => {
+       if (err) {
+         console.log(err)
+         return;
+       }
+       if (stderr) {
+         console.log(stderr)
+       }
+       if (stdout) {
+         // console.log(stdout);
+       }
+     })
+    })
+  })
+}
 
-const Seneca = require('seneca')
-
+const TelemetryCollector = {
+    defaultTime: 5000,
+    specList: [],
+    extractFromSpec(spec, event) {
+        const metadata = {
+          id: spec.data.meta.id,
+          tx_id: spec.data.meta.tx,
+          mi_id: spec.data.meta.mi,
+          msg: JSON.stringify(spec.data.msg),
+        }
+        if (spec.ctx.actdef) {
+          metadata.plugin_name = spec.ctx.actdef.plugin_fullname;
+          metadata.pattern = spec.ctx.actdef.pattern;
+        }
+      
+        if (event === 'outward') {
+          metadata.duration = spec.ctx.duration;
+          metadata.endTime = spec.data.meta.end;
+          metadata.res = spec.data.res;
+        }
+        if (event === 'inward' && !metadata.startTime) {
+          metadata.startTime = spec.data.meta.start;
+        }
+        return metadata;
+      },
+    updateSpecList(specMetadata) {
+        const spec = this.specList.find((s) => s.tx_id === specMetadata.tx_id);
+        if (spec) {
+            const actionExists = spec.stackList.find((ss) => ss.mi_id === specMetadata.mi_id);
+            if (actionExists) {
+                Object.assign(actionExists, specMetadata);
+            } else {
+                spec.stackList.push(specMetadata);
+            }
+        } else {
+            this.specList.push({
+                tx_id: specMetadata.tx_id,
+                stackList: [specMetadata],
+            });
+        }
+    },
+    testDispatchEvents() {
+      sendCurl('SenecaPlugin', this.specList);
+      /*
+      this.specList.forEach((s) => {
+        newrelicReportEvent('SenecaPlugin', {
+          ok: true,
+          val: 1
+        });
+      })
+      */
+    },
+}
 
 const sleep = (millis) => new Promise(r=>setTimeout(r,millis))
 
@@ -26,95 +118,16 @@ let s01 = Seneca()
       return this.prior(msg);
     })
 
-const specList = [];
-
-const extractFromSpec = (spec, event) => {
-  const metadata = {
-    id: spec.data.meta.id,
-    tx_id: spec.data.meta.tx,
-    mi_id: spec.data.meta.mi,
-    msg: JSON.stringify(spec.data.msg),
-  }
-  if (spec.ctx.actdef) {
-    metadata.plugin_name = spec.ctx.actdef.plugin_fullname;
-    metadata.pattern = spec.ctx.actdef.pattern;
-  }
-
-  if (event === 'outward') {
-    metadata.duration = spec.ctx.duration;
-    metadata.endTime = spec.data.meta.end;
-    metadata.res = spec.data.res;
-  }
-  if (event === 'inward') {
-    metadata.startTime = spec.data.meta.start;
-  }
-  return metadata;
-};
-
-/*
-[
-  {
-    tx_id: "asd12",
-    stackList: [
-
-    ] 
-  }
-]
-*/
-
-const updateSpecList = (specMetadata) => {
-  const spec = specList.find((s) => s.tx_id === specMetadata.tx_id);
-  if (spec) {
-    const actionExists = spec.stackList.find((ss) => ss.mi_id === specMetadata.mi_id);
-    if (actionExists) {
-      Object.assign(actionExists, specMetadata);
-    } else {
-      spec.stackList.push(specMetadata);
-    }
-  } else {
-    specList.push({
-      tx_id: specMetadata.tx_id,
-      stackList: [specMetadata],
-    });
-  }
-}
-
-
-// ctx.seneca.fixedargs.fatal$
-// ctx.origmsg.local
-
-
 s01.order.inward.add(spec=>{
-  const specMetadata = extractFromSpec(spec, 'inward');
-    updateSpecList(specMetadata);
-  /*
-  console.log(JSON.stringify(spec));
-  if(spec.data.msg.m) {
-    const specMetadata = extractFromSpec(spec, 'inward');
-    updateSpecList(specMetadata);
-  }
-  */
+  const specMetadata = TelemetryCollector.extractFromSpec(spec, 'inward');
+  TelemetryCollector.updateSpecList(specMetadata);
 })
 
 
 s01.order.outward.add(spec=>{
-  const specMetadata = extractFromSpec(spec, 'outward');
-  updateSpecList(specMetadata);
-  /*
-  if(spec.data.msg.m) {
-    const specMetadata = extractFromSpec(spec, 'outward');
-    updateSpecList(specMetadata);
-  }
-  */
+  const specMetadata = TelemetryCollector.extractFromSpec(spec, 'outward');
+  TelemetryCollector.updateSpecList(specMetadata);
 })
-
-/*
-  Things I've discovered:
-    inward and outward .add functions get called several times.
-    All inwards run before the first outward
-    Inward hooks runs before a function gets executed, and the outward hook
-      runs after a function finishes.
-*/
 
 /*
 Simple example:
@@ -172,15 +185,18 @@ Simple example:
       ]
    }
   ]
-
 */
 
 
+// Test basic message
 s01.act('m:1,k:2', (msg) => {
-  console.log(JSON.stringify(specList))
+  //console.log(JSON.stringify(specList))
 }) // { k: 6 }
 
-
-
+// Test message with priors
 // s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 
+
+setTimeout(() => {
+  TelemetryCollector.testDispatchEvents();
+}, 5000)
