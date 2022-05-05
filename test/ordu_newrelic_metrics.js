@@ -3,11 +3,6 @@ const Seneca = require('seneca')
 
 const { MetricBatch, SummaryMetric, MetricClient} = require('@newrelic/telemetry-sdk').telemetry.metrics
 
-// create our client using the metrics API key
-const newrelicMetricClient = new MetricClient({
-    apiKey: 'd2f92475f00f51add8f4b3e3235982a03990NRAL',
-});
-
 /*
 const sumMetric = new SummaryMetric()
 
