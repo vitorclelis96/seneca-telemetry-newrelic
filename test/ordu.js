@@ -1,9 +1,10 @@
-const { exec } = require('child_process');
 const newrelic = require('newrelic');
+
+const { exec } = require('child_process');
 const { stderr } = require('process');
 const Seneca = require('seneca');
 
-// Test function
+// Test function for Events api
 function sendCurl(eventType, specList) {
   specList.forEach((s) => {
     const tx_id = s.tx_id;
@@ -19,9 +20,9 @@ function sendCurl(eventType, specList) {
       delete obj.endTime;
       delete obj.startTime;
       /*
-        MELHORAR ISSO AQUI
+        TODO: Improve this;
       */
-     const accountApiKey = "YOUR API KEY";
+     const accountApiKey = "YOU API KEY";
      const accountId = "3487050";
      const objStr = JSON.stringify(obj);
      const curlStr = `curl -X POST -H "Content-Type: application/json" -H "Api-Key: ${accountApiKey}" https://insights-collector.newrelic.com/v1/accounts/${accountId}/events -d '${objStr}'`;
@@ -34,7 +35,7 @@ function sendCurl(eventType, specList) {
          console.log(stderr)
        }
        if (stdout) {
-         // console.log(stdout);
+         console.log(stdout);
        }
      })
     })
@@ -66,7 +67,7 @@ const TelemetryCollector = {
         }
         return metadata;
       },
-    updateSpecList(specMetadata) {
+    updateSpecList(specMetadata, callbackFn) {
         const spec = this.specList.find((s) => s.tx_id === specMetadata.tx_id);
         if (spec) {
             const actionExists = spec.stackList.find((ss) => ss.mi_id === specMetadata.mi_id);
@@ -76,22 +77,23 @@ const TelemetryCollector = {
                 spec.stackList.push(specMetadata);
             }
         } else {
-            this.specList.push({
-                tx_id: specMetadata.tx_id,
-                stackList: [specMetadata],
-            });
+          const dataObj = {
+            tx_id: specMetadata.tx_id,
+            stackList: [specMetadata],
+          };
+          if (callbackFn) {
+            dataObj.callbackFn = callbackFn;
+          }
+          this.specList.push(dataObj);
         }
     },
     testDispatchEvents() {
-      sendCurl('SenecaPlugin', this.specList);
-      /*
+      // sendCurl('SenecaPlugin', this.specList);
       this.specList.forEach((s) => {
-        newrelicReportEvent('SenecaPlugin', {
-          ok: true,
-          val: 1
-        });
+        if (s.callbackFn) {
+          s.callbackFn();
+        }
       })
-      */
     },
 }
 
@@ -119,8 +121,12 @@ let s01 = Seneca()
     })
 
 s01.order.inward.add(spec=>{
-  const specMetadata = TelemetryCollector.extractFromSpec(spec, 'inward');
-  TelemetryCollector.updateSpecList(specMetadata);
+  newrelic.startSegment(spec.ctx.actdef.pattern+'~'+spec.ctx.actdef.action, true, (callback)=> {
+    const specMetadata = TelemetryCollector.extractFromSpec(spec, 'inward');
+    TelemetryCollector.updateSpecList(specMetadata, callback);
+  }, () => {console.log('Dispatched to newrelic!')});
+  
+  
 })
 
 
