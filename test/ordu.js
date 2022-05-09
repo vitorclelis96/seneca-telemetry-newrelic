@@ -5,7 +5,7 @@ const { stderr } = require('process');
 const Seneca = require('seneca');
 
 // Test function for Events api
-function sendCurl(eventType, specList) {
+function sendEventCurl(eventType, specList) {
   specList.forEach((s) => {
     const tx_id = s.tx_id;
     s.stackList.forEach((sL) => {
@@ -15,7 +15,7 @@ function sendCurl(eventType, specList) {
         res: JSON.stringify(sL.res),
         finished_at: sL.endTime,
         started_at: sL.startTime,
-        eventType: 'DoTestSt',
+        eventType,
       }
       delete obj.endTime;
       delete obj.startTime;
@@ -84,7 +84,7 @@ const TelemetryCollector = {
         }
     },
     testDispatchEvents() {
-      sendCurl('SenecaPlugin', this.specList);
+      sendEventCurl('SenecaPlugin', this.specList);
     },
 }
 
