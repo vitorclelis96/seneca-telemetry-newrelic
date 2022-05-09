@@ -67,7 +67,7 @@ const TelemetryCollector = {
         }
         return metadata;
       },
-    updateSpecList(specMetadata, callbackFn) {
+    updateSpecList(specMetadata) {
         const spec = this.specList.find((s) => s.tx_id === specMetadata.tx_id);
         if (spec) {
             const actionExists = spec.stackList.find((ss) => ss.mi_id === specMetadata.mi_id);
@@ -77,23 +77,14 @@ const TelemetryCollector = {
                 spec.stackList.push(specMetadata);
             }
         } else {
-          const dataObj = {
+          this.specList.push({
             tx_id: specMetadata.tx_id,
             stackList: [specMetadata],
-          };
-          if (callbackFn) {
-            dataObj.callbackFn = callbackFn;
-          }
-          this.specList.push(dataObj);
+          });
         }
     },
     testDispatchEvents() {
-      // sendCurl('SenecaPlugin', this.specList);
-      this.specList.forEach((s) => {
-        if (s.callbackFn) {
-          s.callbackFn();
-        }
-      })
+      sendCurl('SenecaPlugin', this.specList);
     },
 }
 
@@ -121,12 +112,8 @@ let s01 = Seneca()
     })
 
 s01.order.inward.add(spec=>{
-  newrelic.startSegment(spec.ctx.actdef.pattern+'~'+spec.ctx.actdef.action, true, (callback)=> {
-    const specMetadata = TelemetryCollector.extractFromSpec(spec, 'inward');
-    TelemetryCollector.updateSpecList(specMetadata, callback);
-  }, () => {console.log('Dispatched to newrelic!')});
-  
-  
+  const specMetadata = TelemetryCollector.extractFromSpec(spec, 'inward');
+  TelemetryCollector.updateSpecList(specMetadata);
 })
 
 
