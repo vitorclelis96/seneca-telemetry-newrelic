@@ -3,6 +3,60 @@ const newrelic = require('newrelic');
 const { exec } = require('child_process');
 const { stderr } = require('process');
 const Seneca = require('seneca');
+const { make_standard_act_log_entry } = require('seneca/lib/common');
+
+// const ACCOUNT_API_KEY = "YOU API KEY";
+const ACCOUNT_API_KEY = "d2f92475f00f51add8f4b3e3235982a03990NRAL";
+const SERVICE_NAME = "ORDU_TESTING";
+const HOST = "LOCALHOST"
+
+function sendTraceCurl(specList) {
+  const endpoint = "https://trace-api.newrelic.com/trace/v1";
+  const headers = `-H "Content-Type: application/json" -H "Api-Key: ${ACCOUNT_API_KEY}" -H "Data-Format: newrelic" -H "Data-Format-Version: 1"`
+  const spans = specList.flatMap((sl) => {
+    return sl.stackList.map((s) => ({
+      id: s.mi_id,
+      'trace.id': sl.tx_id,
+      timestamp: s.startTime,
+      attributes: {
+        // 'duration.ms': s.duration,
+        'duration.ms': s.manualEndTime - s.manualStartTime,
+        plugin_name: s.plugin_name,
+        pattern: s.pattern,
+        name: `${s.plugin_name} ~ ${s.pattern}`,
+        'parent.id': sl.tx_id, 
+        // TODO: Discover if 'parent.id' should be something like
+        // 'seneca_newrelic_' or should be the tx_id
+      }
+    }))
+  })
+  const baseData = [
+    {
+      common: {
+        attributes: {
+          "service.name": SERVICE_NAME,
+          host: HOST,
+        },
+      },
+      spans,
+    }
+  ];
+  const curlStr = `curl -i ${headers} -X POST -d '${JSON.stringify(baseData)}' '${endpoint}'`;
+  exec(curlStr, (err, stdout, stderr) => {
+    if (err) {
+      console.log(err)
+      return;
+    }
+    if (stderr) {
+      console.log(stderr)
+    }
+    if (stdout) {
+      console.log(stdout);
+    }
+  })
+}
+
+
 
 // Test function for Events api
 function sendEventCurl(eventType, specList) {
@@ -22,10 +76,9 @@ function sendEventCurl(eventType, specList) {
       /*
         TODO: Improve this;
       */
-     const accountApiKey = "YOU API KEY";
      const accountId = "3487050";
      const objStr = JSON.stringify(obj);
-     const curlStr = `curl -X POST -H "Content-Type: application/json" -H "Api-Key: ${accountApiKey}" https://insights-collector.newrelic.com/v1/accounts/${accountId}/events -d '${objStr}'`;
+     const curlStr = `curl -X POST -H "Content-Type: application/json" -H "Api-Key: ${ACCOUNT_API_KEY}" https://insights-collector.newrelic.com/v1/accounts/${accountId}/events -d '${objStr}'`;
      exec(curlStr, (err, stdout, stderr) => {
        if (err) {
          console.log(err)
@@ -61,9 +114,11 @@ const TelemetryCollector = {
           metadata.duration = spec.ctx.duration;
           metadata.endTime = spec.data.meta.end;
           metadata.res = spec.data.res;
+          metadata.manualEndTime = Date.now();
         }
         if (event === 'inward' && !metadata.startTime) {
           metadata.startTime = spec.data.meta.start;
+          metadata.manualStartTime = Date.now();
         }
         return metadata;
       },
@@ -84,7 +139,8 @@ const TelemetryCollector = {
         }
     },
     testDispatchEvents() {
-      sendEventCurl('SenecaPlugin', this.specList);
+      // sendEventCurl('SenecaPlugin', this.specList);
+      sendTraceCurl(this.specList)
     },
 }
 
@@ -187,7 +243,7 @@ s01.act('m:1,k:2', (msg) => {
 }) // { k: 6 }
 
 // Test message with priors
-// s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
+s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 
 
 setTimeout(() => {
