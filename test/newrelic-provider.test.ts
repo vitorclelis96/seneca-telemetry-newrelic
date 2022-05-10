@@ -3,6 +3,7 @@
 import * as Fs from 'fs'
 
 import NewrelicProvider from '../src/newrelic-provider';
+import newrelic from 'newrelic';
 
 
 const Seneca = require('seneca')
@@ -99,6 +100,29 @@ describe('newrelic-provider', () => {
             let native = seneca.export('NewrelicProvider/native')
             expect(native().trello).toBeDefined()
         }
+    })
+
+    test('background transaction', async () => {
+        await newrelic.startBackgroundTransaction(
+            'test',
+            'testGroup',
+            function handle() {
+                return new Promise((resolve, reject) => {
+                    const seneca = Seneca({legacy: false})
+                        .test()
+                        .use('promisify')
+                        .use(NewrelicProvider)
+    
+                        .act('a:1,x:10', () => {
+                            seneca.act('b:1,x:10', () => {
+                                seneca.act('c:1,x:10', resolve) // { x: 22 }
+                            }) // { x: 11 }
+                        }) // { x: 10 }
+
+                    
+                })
+            }
+        )
     })
 })
 
