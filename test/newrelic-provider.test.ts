@@ -3,6 +3,7 @@
 import * as Fs from 'fs'
 
 import NewrelicProvider from '../src/newrelic-provider';
+import newrelic from 'newrelic';
 
 
 const Seneca = require('seneca')
@@ -101,75 +102,27 @@ describe('newrelic-provider', () => {
         }
     })
 
+    test('background transaction', async () => {
+        await newrelic.startBackgroundTransaction(
+            'test',
+            'testGroup',
+            function handle() {
+                return new Promise((resolve, reject) => {
+                    const seneca = Seneca({legacy: false})
+                        .test()
+                        .use('promisify')
+                        .use(NewrelicProvider)
+    
+                        .act('a:1,x:10', () => {
+                            seneca.act('b:1,x:10', () => {
+                                seneca.act('c:1,x:10', resolve) // { x: 22 }
+                            }) // { x: 11 }
+                        }) // { x: 10 }
 
-    test('entity-load', async () => {
-        if (!missingKeys) {
-            const seneca = Seneca({legacy: false})
-                .test()
-                .use('promisify')
-                .use('entity')
-                .use('provider', {
-                    provider: {
-                        trello: {
-                            keys: {
-                                api: {
-                                    value: CONFIG.key,
-                                },
-                                user: {
-                                    value: CONFIG.token
-                                },
-                            }
-                        }
-                    }
+                    
                 })
-                .use(NewrelicProvider)
-            const cardAndBoardId = CONFIG.boardId + "/" + CONFIG.cardId
-            let card = await seneca.entity('provider/trello/card')
-                .load$(cardAndBoardId)
-            await (SenecaMsgTest(seneca, NewrelicProviderMessages)())
-            expect(card).toBeDefined()
-            expect(card.id).toEqual(CONFIG.cardId)
-            expect(card.entity$).toBe('provider/trello/card')
-        }
-    })
-
-
-    test('entity-save', async () => {
-        if (!missingKeys) {
-            const provider_options = {
-                provider: {
-                    trello: {
-                        keys: {
-                            api: {
-                                value: CONFIG.key,
-                            },
-                            user: {
-                                value: CONFIG.token
-                            },
-                        }
-                    }
-                }
             }
-
-            const seneca = Seneca({legacy: false})
-                .test()
-                .use('promisify')
-                .use('entity')
-                .use('provider', provider_options)
-                .use(NewrelicProvider)
-
-            const cardAndBoardId = CONFIG.boardId + "/" + CONFIG.cardId
-            let card = await seneca.entity('provider/trello/card')
-                .load$(cardAndBoardId)
-
-            expect(card).toBeDefined()
-            card.desc = card.desc + 'M'
-
-            card = await card.save$(CONFIG.cardId + `/desc/Teste`)
-            expect(card).toBeDefined()
-            expect(card.desc.endsWith('M')).toBeTruthy()
-        }
+        )
     })
-
 })
 

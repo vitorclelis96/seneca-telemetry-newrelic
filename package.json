@@ -55,6 +55,6 @@
     "seneca-promisify": ">=2"
   },
   "dependencies": {
-    "trello": "^0.11.0"
+    "@types/newrelic": "^7.0.3"
   }
 }
