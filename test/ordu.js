@@ -1,9 +1,5 @@
-const newrelic = require('newrelic');
-
-const { exec } = require('child_process');
-const { stderr } = require('process');
 const Seneca = require('seneca');
-const { make_standard_act_log_entry } = require('seneca/lib/common');
+const { exec } = require('child_process');
 
 const ACCOUNT_API_KEY = "YOU API KEY";
 const SERVICE_NAME = "ORDU_TESTING";
@@ -18,14 +14,11 @@ function sendTraceCurl(specList) {
       'trace.id': sl.tx_id,
       timestamp: s.startTime,
       attributes: {
-        // 'duration.ms': s.duration,
         'duration.ms': s.manualEndTime - s.manualStartTime,
         plugin_name: s.plugin_name,
         pattern: s.pattern,
         name: `${s.plugin_name} ~ ${s.pattern}`,
-        'parent.id': sl.tx_id, 
-        // TODO: Discover if 'parent.id' should be something like
-        // 'seneca_newrelic_' or should be the tx_id
+        'parent.id': sl.tx_id,
       }
     }))
   })
