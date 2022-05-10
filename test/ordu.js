@@ -5,8 +5,7 @@ const { stderr } = require('process');
 const Seneca = require('seneca');
 const { make_standard_act_log_entry } = require('seneca/lib/common');
 
-// const ACCOUNT_API_KEY = "YOU API KEY";
-const ACCOUNT_API_KEY = "d2f92475f00f51add8f4b3e3235982a03990NRAL";
+const ACCOUNT_API_KEY = "YOU API KEY";
 const SERVICE_NAME = "ORDU_TESTING";
 const HOST = "LOCALHOST"
 
