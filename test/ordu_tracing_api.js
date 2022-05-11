@@ -7,12 +7,24 @@ const HOST = "LOCALHOST"
 
 const TelemetryCollector = {
     specList: [],
+    extractFullMessage(spec) {
+			try {
+				let fullMessage = null;
+				if (spec && spec.data && spec.data.msg) {
+					fullMessage = JSON.stringify(spec.data.msg);
+				}
+				return fullMessage
+			} catch (error) {
+				let fullMessage = 'Error: Invalid JSON parsing';
+				return fullMessage
+			}
+		},
     extractFromSpec(spec, event) {
         const metadata = {
           id: spec.data.meta.id,
           tx_id: spec.data.meta.tx,
           mi_id: spec.data.meta.mi,
-          msg: JSON.stringify(spec.data.msg),
+          fullMessage: this.extractFullMessage(spec)
         }
         if (spec.ctx.actdef) {
           metadata.plugin_name = spec.ctx.actdef.plugin_fullname;
@@ -44,43 +56,48 @@ const TelemetryCollector = {
       }
     },
     async sendTracing(spec) {
-      const endpoint = "https://trace-api.newrelic.com/trace/v1";
-      const headers = `-H "Content-Type: application/json" -H "Api-Key: ${ACCOUNT_API_KEY}" -H "Data-Format: newrelic" -H "Data-Format-Version: 1"`
-      const tracingSpec = {
-        id: spec.mi_id,
-        'trace.id': spec.tx_id,
-        timestamp: spec.manualStartTime,
-        attributes: {
-          'duration.ms': spec.manualEndTime - spec.manualStartTime,
-          plugin_name: spec.plugin_name,
-          pattern: spec.pattern,
-          name: `${spec.plugin_name} ~ ${spec.pattern}`,
-          'parent.id': spec.tx_id,
-        },
-      };
-      const baseData = [
-        {
-          common: {
-            attributes: {
-              "service.name": SERVICE_NAME,
-              host: HOST,
-            },
+      return new Promise((resolve, reject) => {
+        const endpoint = "https://trace-api.newrelic.com/trace/v1";
+        const headers = `-H "Content-Type: application/json" -H "Api-Key: ${ACCOUNT_API_KEY}" -H "Data-Format: newrelic" -H "Data-Format-Version: 1"`
+        const tracingSpec = {
+          id: spec.mi_id,
+          'trace.id': spec.tx_id,
+          timestamp: spec.manualStartTime,
+          attributes: {
+            'duration.ms': spec.manualEndTime - spec.manualStartTime,
+            plugin_name: spec.plugin_name,
+            pattern: spec.pattern,
+            name: `${spec.plugin_name} ~ ${spec.pattern}`,
+            'parent.id': spec.tx_id,
+            fullMessage: spec.fullMessage,
           },
-          spans: [tracingSpec],
-        }
-      ];
-      const curlStr = `curl -i ${headers} -X POST -d '${JSON.stringify(baseData)}' '${endpoint}'`;
-      exec(curlStr, (err, stdout, stderr) => {
-        if (err) {
-          console.log(err)
-          return;
-        }
-        if (stderr) {
-          console.log(stderr)
-        }
-        if (stdout) {
-          console.log(stdout);
-        }
+        };
+        const baseData = [
+          {
+            common: {
+              attributes: {
+                "service.name": SERVICE_NAME,
+                host: HOST,
+              },
+            },
+            spans: [tracingSpec],
+          }
+        ];
+        const curlStr = `curl -i ${headers} -X POST -d '${JSON.stringify(baseData)}' '${endpoint}'`;
+        exec(curlStr, (err, stdout, stderr) => {
+          if (err) {
+            console.log(err)
+            reject(err);
+          }
+          if (stderr) {
+            console.log(stderr)
+            reject(stderr);
+          }
+          if (stdout) {
+            console.log(stdout);
+            resolve(stdout);
+          }
+        })
       })
     }
 }
