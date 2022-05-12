@@ -1,6 +1,6 @@
 /* Copyright © 2021 Seneca Project Contributors, MIT License. */
 import newrelic from 'newrelic';
-import { exec } from 'node:child_process'
+import { exec } from 'child_process'
 
 type NewRelicProviderOptions = {};
 
