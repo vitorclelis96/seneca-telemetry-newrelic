@@ -21,6 +21,7 @@ Capture NewRelic telemetry for Seneca actions.
 
 
 ```js
+const Seneca = require('seneca')
 
 ```
 
@@ -33,6 +34,13 @@ $ npm install @seneca/telemetry-newrelic
 
 
 <!--START:options-->
+
+
+## Options
+
+*None.*
+
+
 <!--END:options-->
 
 <!--START:action-list-->
