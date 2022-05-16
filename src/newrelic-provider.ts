@@ -1,6 +1,7 @@
 /* Copyright © 2021 Seneca Project Contributors, MIT License. */
 import newrelic from 'newrelic';
-import { exec } from 'child_process'
+const {MetricBatch,CountMetric,MetricClient, GaugeMetric } = require('@newrelic/telemetry-sdk').telemetry.metrics
+import { exec } from 'child_process';
 
 type NewRelicProviderOptions = {};
 
@@ -19,9 +20,15 @@ interface NewrelicSegmentApi {
     ENABLED: boolean,
 }
 
+interface NewrelicMetricsApi {
+  ENABLED: boolean,
+  ACCOUNT_API_KEY: string,
+}
+
 interface NewrelicProviderOptions {
     tracing?: NewrelicTracingApi,
     segment?: NewrelicSegmentApi,
+    metrics?: NewrelicMetricsApi,
 }
 interface TelemetrySpecMetadata {
     id: string,
@@ -211,6 +218,7 @@ function PreloadNewrelicProvider(this: any, opts: any) {
     const { options }: { options: NewrelicProviderOptions } = opts;
     const segmentIsEnabled = options && options.segment && options.segment.ENABLED;
     const tracingIsEnabled = options && options.tracing && options.tracing.ENABLED;
+    const metricsIsEnabled = options && options.metrics && options.metrics.ENABLED;
     
     let telemetryCollector: Nullable<ReturnType<typeof TelemetryCollector>> = null;
     if (tracingIsEnabled && options.tracing) {
@@ -239,6 +247,17 @@ function PreloadNewrelicProvider(this: any, opts: any) {
             telemetryCollector.updateSpecList(specMetadata);
         }
     })
+
+    if (metricsIsEnabled) {
+      if (!options.metrics?.ACCOUNT_API_KEY) {
+        throw new Error("Please provide ACCOUNT_API_KEY parameter to Metrics API");
+      }
+      const metricsClient = new MetricClient({
+        apiKey: options.metrics.ACCOUNT_API_KEY,
+      })
+  
+      this.metricsClient = metricsClient;
+    }
 }
 
 function NewrelicProvider(this: any, options: NewrelicProviderOptions) {
@@ -249,6 +268,7 @@ function NewrelicProvider(this: any, options: NewrelicProviderOptions) {
 
     seneca
         .message('sys:provider,provider:newrelic,get:info', get_info)
+        .message('sys:provider,provider:newrelic,record:metric', metric_handler)
 
     async function get_info(this: any, _msg: any) {
         return {
@@ -258,6 +278,89 @@ function NewrelicProvider(this: any, options: NewrelicProviderOptions) {
                 sdk: 'newrelic'
             }
         }
+    }
+
+    async function metric_count_handler(name: string, value: number, attributes?: any) {
+      // TODO: Something is broken.
+      // const countMetrics = new CountMetric(name, value, attributes || {}, Date.now());
+      const countMetrics = new CountMetric(name, value);
+      // const batch = new MetricBatch({}, )
+      seneca.metricsClient.send(countMetrics, (err, res, body) => {
+        if (err) {
+          console.log('aq', err);
+        }
+        console.log(res.statusCode);
+        console.log(body);
+      })
+    }
+
+    async function metric_gauge_handler(name: string, value: number, attributes?: any) {
+      const headers = `-H "Content-Type: application/json" -H "Api-Key: ${options.metrics?.ACCOUNT_API_KEY}"`;
+      const jsonData = JSON.stringify([{
+        metrics: [{
+          "name": "test.custom.manual",
+          "type": "gauge",
+          "value": 1,
+          "timestamp": Date.now(),
+          "attributes": {"host.name": "localhost"}
+        }]
+      }]);
+      const curlStr = `curl -vvv -k ${headers} -X POST https://metric-api.newrelic.com/metric/v1 --data ${jsonData}`;
+      exec(curlStr, (err, stdout, stderr) => {
+        if (err) {
+          console.log(err)
+        }
+        if (stderr) {
+          console.log(stderr)
+        }
+        if (stdout) {
+          console.log(stdout);
+        }
+      })
+      /*
+      const gaugeMetric = new GaugeMetric(name, value, attributes || {});
+      const batch = new MetricBatch({}, Date.now(), 1000);
+      batch.addMetric(gaugeMetric);
+      seneca.metricsClient.send(batch, (err, res, body) => {
+        if (err) {
+          console.log('aq', err);
+        }
+        console.log('xD')
+        console.log(res.statusCode);
+        console.log(body);
+      })
+      */
+    }
+
+    async function metric_summary_handler(msg: any) {
+      
+    }
+
+    async function metric_handler(this: any, msg: any) {
+      // gauge, count, summary
+      // timestamp
+      // interval.ms 
+      // attributes => labels
+      // For gauge and count the value should be a single number
+      const { type, name, value, attributes } = msg;
+      if (!type || !name || !value) {
+        throw new Error(`
+        Invalid pattern, please make sure you provide type:(gauge|count|summary),name:string,value:(number|string)
+        `)
+      }
+      switch (type) {
+        case 'count':
+          return metric_count_handler(name, value, attributes);
+        case 'gauge':
+          return metric_gauge_handler(msg);
+        case 'summary':
+          return metric_summary_handler(msg);
+        default:
+          throw new Error('Invalid or missing type');
+      }
+      return {
+        ok: true,
+      }
     }
 
     return {

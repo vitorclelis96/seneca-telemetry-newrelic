@@ -56,7 +56,8 @@
     "seneca-promisify": ">=2"
   },
   "dependencies": {
-    "newrelic": "^8.10.0",
-    "@types/newrelic": "^7.0.3"
+    "@newrelic/telemetry-sdk": "^0.6.0",
+    "@types/newrelic": "^7.0.3",
+    "newrelic": "^8.10.0"
   }
 }
