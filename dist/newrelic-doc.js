@@ -3,17 +3,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const docs = {
     get_info: {
-        desc: 'Get information about the provider.',
-    },
-    load_repo: {
-        desc: 'Load GitHub repository data into an entity.',
-    },
-    save_repo: {
-        desc: 'Update GitHub repository data from an entity.',
+        desc: 'Get information about newrelic provider.',
     },
 };
 exports.default = docs;
 if ('undefined' !== typeof (module)) {
     module.exports = docs;
 }
-//# sourceMappingURL=GithubProvider-doc.js.map
+//# sourceMappingURL=newrelic-doc.js.map
