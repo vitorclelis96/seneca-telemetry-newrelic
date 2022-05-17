@@ -1,11 +1,10 @@
 
 // http://localhost:8000/p1?x=1
 
-
 const NewRelic = require('newrelic')
 const Express = require('express')
 const Seneca = require('seneca')
-
+const Plugin = require('..')
 
 setupSeneca()
 
@@ -13,39 +12,25 @@ setupSeneca()
 function setupSeneca() {
   Seneca()
     .test()
+    .use(Plugin)
     .add('a:1', function a1(msg, reply, meta) {
-      NewRelic.startSegment(meta.pattern+'~'+meta.action, true, (endSegment)=>{
-
-        setTimeout(()=>{
-          this.act('b:1', {x:msg.x}, function(err, out) {
-            reply({x:2*out.x})
-            endSegment()
-          })
-        }, 400+(400*Math.random()))
-
-      }, function endSegment() {})
+      setTimeout(()=>{
+        this.act('b:1', {x:msg.x}, function(err, out) {
+          reply({x:2*out.x})
+        })
+      }, 400+(400*Math.random()))
     })
     .add('a:1', function a1p(msg, reply, meta) {
-      NewRelic.startSegment(meta.pattern+'~'+meta.action, true, (endSegment)=>{
-
-        setTimeout(()=>{
-          this.prior(msg, function(err, out) {
-            reply({x:out.x+0.5})
-            endSegment()
-          })
-        }, 400+(400*Math.random()))
-
-      }, function endSegment() {})
+      setTimeout(()=>{
+        this.prior(msg, function(err, out) {
+          reply({x:out.x+0.5})
+        })
+      }, 400+(400*Math.random()))
     })
     .add('b:1', function b1(msg, reply, meta) {
-      NewRelic.startSegment(meta.pattern+'~'+meta.action, true, (endSegment)=>{
-
-        setTimeout(()=>{
-          reply({x:1+msg.x})
-          endSegment()
-        }, 400+(400*Math.random()))
-
-      }, function endSegment() {})
+      setTimeout(()=>{
+        reply({x:1+msg.x})
+      }, 400+(400*Math.random()))
     })
     .ready(function() {
       setupExpress(this)

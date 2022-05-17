@@ -1,19 +1,19 @@
 {
-  "name": "@seneca/github-provider",
-  "version": "0.2.0",
-  "main": "dist/github-provider.js",
+  "name": "@seneca/telemetry-newrelic",
+  "version": "0.0.1",
+  "main": "dist/newrelic.js",
   "type": "commonjs",
-  "types": "dist/github-provider.d.ts",
+  "types": "dist/newrelic.d.ts",
   "description": "Handle incoming messages within other frameworks.",
-  "homepage": "https://github.com/senecajs/seneca-github-provider",
+  "homepage": "https://github.com/senecajs/seneca-telemetry-newrelic",
   "keywords": [
     "seneca",
-    "github-provider"
+    "telemetry-newrelic"
   ],
   "author": "Richard Rodger - richardrodger.com",
   "repository": {
     "type": "git",
-    "url": "git://github.com/senecajs/seneca-github-provider.git"
+    "url": "git://github.com/senecajs/seneca-telemetry-newrelic.git"
   },
   "scripts": {
     "test": "jest --coverage",
