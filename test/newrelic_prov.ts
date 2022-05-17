@@ -1,5 +1,5 @@
 const Seneca = require('seneca');
-import NewrelicProvider from '../src/newrelic-provider';
+import NewrelicProvider from '../src/newrelic';
 
 const sleep = (millis: any) => new Promise(r=>setTimeout(r,millis))
 

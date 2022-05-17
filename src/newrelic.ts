@@ -2,8 +2,10 @@
 
 
 import NewRelic from 'newrelic';
-const {MetricBatch,CountMetric,MetricClient, GaugeMetric } = require('@newrelic/telemetry-sdk').telemetry.metrics
 import { exec } from 'child_process';
+import { MetricBatch, SummaryMetric, CountMetric, MetricClient, GaugeMetric } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics';
+import { SummaryValue } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics/summary';
+import { MetricBase } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics/metric';
 
 type NewRelicOptions = {
     tracing?: NewrelicTracingApi,
@@ -264,8 +266,8 @@ function newrelic(this: any, options: NewRelicOptions) {
     const seneca: any = this
 
     seneca
-        .message('sys:provider,provider:newrelic,get:info', get_info)
-        .message('sys:provider,provider:newrelic,record:metric', metric_handler)
+        .message('plugin:newrelic,get:info', get_info)
+        .message('plugin:newrelic,api:metrics', metric_handler)
 
     async function get_info(this: any, _msg: any) {
         return {
@@ -277,93 +279,73 @@ function newrelic(this: any, options: NewRelicOptions) {
         }
     }
 
-    async function metric_count_handler(name: string, value: number, attributes?: any) {
-      // TODO: Something is broken.
-      // const countMetrics = new CountMetric(name, value, attributes || {}, Date.now());
-      const countMetrics = new CountMetric(name, value);
-      // const batch = new MetricBatch({}, )
-      seneca.metricsClient.send(countMetrics, (err, res, body) => {
-        if (err) {
+    const metricBatchBuilder = (metric: MetricBase<any>) => {
+      const batch = new MetricBatch({}, Date.now(), 1000);
+      batch.addMetric(metric)
+      return batch;
+    };
+
+    const sendBatch = (batch: MetricBatch) => {
+      seneca.metricsClient.send(batch, (err: any, res: any, body: any) => {
+      if (err) {
           console.log('aq', err);
-        }
-        console.log(res.statusCode);
-        console.log(body);
+      }
+          console.log(res.statusCode);
+          console.log(body);
       })
+    }
+
+    async function metric_count_handler(name: string, value: number, attributes?: any) {
+      const countMetrics = new CountMetric(name, value, attributes || {});
+      const batch = metricBatchBuilder(countMetrics);
+      sendBatch(batch);
     }
 
     async function metric_gauge_handler(name: string, value: number, attributes?: any) {
-      const headers = `-H "Content-Type: application/json" -H "Api-Key: ${options.metrics?.ACCOUNT_API_KEY}"`;
-      const jsonData = JSON.stringify([{
-        metrics: [{
-          "name": "test.custom.manual",
-          "type": "gauge",
-          "value": 1,
-          "timestamp": Date.now(),
-          "attributes": {"host.name": "localhost"}
-        }]
-      }]);
-      const curlStr = `curl -vvv -k ${headers} -X POST https://metric-api.newrelic.com/metric/v1 --data ${jsonData}`;
-      exec(curlStr, (err, stdout, stderr) => {
-        if (err) {
-          console.log(err)
-        }
-        if (stderr) {
-          console.log(stderr)
-        }
-        if (stdout) {
-          console.log(stdout);
-        }
-      })
-      /*
       const gaugeMetric = new GaugeMetric(name, value, attributes || {});
-      const batch = new MetricBatch({}, Date.now(), 1000);
-      batch.addMetric(gaugeMetric);
-      seneca.metricsClient.send(batch, (err, res, body) => {
-        if (err) {
-          console.log('aq', err);
-        }
-        console.log('xD')
-        console.log(res.statusCode);
-        console.log(body);
-      })
-      */
+      const batch = metricBatchBuilder(gaugeMetric);
+      sendBatch(batch);
     }
 
-    async function metric_summary_handler(msg: any) {
-      
+    async function metric_summary_handler(name: string, value: SummaryValue, attributes?: any) {
+        const summaryMetrics = new SummaryMetric(name, value, attributes || {});
+        const batch = metricBatchBuilder(summaryMetrics);
+        sendBatch(batch);
     }
 
     async function metric_handler(this: any, msg: any) {
-      // gauge, count, summary
-      // timestamp
-      // interval.ms 
-      // attributes => labels
-      // For gauge and count the value should be a single number
+      const extractSummaryData = (): SummaryValue => {
+        const { count, sum, min, max } = msg;
+        return {
+          count: count || 0,
+          sum: sum || 0,
+          min: min || Infinity,
+          max: max || -Infinity ,
+        };
+      }
       const { type, name, value, attributes } = msg;
-      if (!type || !name || !value) {
+      if (!type || !name || (!value && type !== 'summary')) {
         throw new Error(`
-        Invalid pattern, please make sure you provide type:(gauge|count|summary),name:string,value:(number|string)
+          Invalid pattern, please make sure you provide type:(gauge|count|summary),name:string,value:(number|string)
         `)
       }
       switch (type) {
         case 'count':
           return metric_count_handler(name, value, attributes);
         case 'gauge':
-          return metric_gauge_handler(msg);
+          return metric_gauge_handler(name, value, attributes);
         case 'summary':
-          return metric_summary_handler(msg);
+          const summaryData = extractSummaryData();
+          return metric_summary_handler(name, summaryData, attributes);
         default:
           throw new Error('Invalid or missing type');
-      }
-      return {
-        ok: true,
       }
     }
 
     return {
-        exports: {
-            native: () => ({})
-        }
+      exports: {
+        native: () => ({})
+      }
     }
 }
 

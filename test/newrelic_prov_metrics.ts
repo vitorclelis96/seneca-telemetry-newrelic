@@ -1,12 +1,12 @@
 const Seneca = require('seneca');
-import NewrelicProvider from '../src/newrelic-provider';
+import newrelicPlugin from '../src/newrelic';
 
 const sleep = (millis: any) => new Promise(r=>setTimeout(r,millis))
 
 const s01 = Seneca()
     .test()
     .use('promisify')
-    .use(NewrelicProvider, {
+    .use(newrelicPlugin, {
         metrics: {
             ENABLED: true,
             ACCOUNT_API_KEY: 'd2f92475f00f51add8f4b3e3235982a03990NRAL',
@@ -35,4 +35,12 @@ const s01 = Seneca()
 // Test message with priors
 //s01.act('m:2,k:8', Seneca.util.print) // { k: 27 }
 // s01.act('sys:provider,provider:newrelic,record:metric,type:count,value:1,name:Custom/Test')
-s01.act('sys:provider,provider:newrelic,record:metric,type:gauge,value:1,name:test.counter')
+
+// Gauge test
+s01.act('plugin:newrelic,api:metrics,type:gauge,value:5,name:custom.seneca.counter')
+
+// Summary test
+s01.act('plugin:newrelic,api:metrics,type:summary,name:custom.seneca.countsumm,sum:1');
+
+// Count test
+s01.act('plugin:newrelic,api:metrics,type:count,name:custom.seneca.countpp,value:10');
