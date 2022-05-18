@@ -1,61 +1,6 @@
 const newrelic = require('newrelic')
 const Seneca = require('seneca')
 
-function newSegment(actionCb) {
-  return async function action(msg, meta) {
-    const seneca = this
-    try {
-      return newrelic.startSegment(meta.action, true, async () => {
-        return actionCb.bind(seneca)(msg, meta);
-      })
-    } catch (error) {
-      console.log(error)
-    }
-  }
-}
-
-function startTransaction(actionCb) {
-  return async function action(msg, meta) {
-    const seneca = this
-    try {
-      return newrelic.startBackgroundTransaction(meta.action, 'actions', async () => {
-        return actionCb.bind(seneca)(msg, meta)
-      })
-    } catch (error) {
-      console.log(error)
-    }
-  }
-}
-
-function transaction(meta) {
-  let transaction;
-
-  function start() {
-    return newrelic.startBackgroundTransaction(meta.action, 'foobar', () => {
-      console.log(`start transaction ${meta.action}`)
-      transaction = newrelic.getTransaction()
-      return
-    })
-  }
-
-  function end() {
-    if(!transaction) {
-      throw new Error('transaction not started')
-    }
-    console.log(`end transaction ${meta.action}`)
-    transaction.end()
-    return
-  }
-
-  return {
-    start,
-    end
-  }
-}
-
-
-// const NewRelicAPI = ???
-
 const sleep = (millis) => new Promise(r=>setTimeout(r,millis+1000))
 
 let s01 = Seneca()
@@ -96,7 +41,6 @@ let s01 = Seneca()
 
 
 run(s01)
-
 
 async function run(seneca) {
   console.log('\n---')
