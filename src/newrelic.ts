@@ -2,7 +2,7 @@
 
 
 import NewRelic from 'newrelic';
-import { exec } from 'child_process';
+import { request } from 'https';
 import { MetricBatch, SummaryMetric, CountMetric, MetricClient, GaugeMetric } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics';
 import { SummaryValue } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics/summary';
 import { MetricBase } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics/metric';
@@ -56,7 +56,7 @@ interface TelemetryCollector {
     extractFullMessage: (spec: any) => Nullable<string>,
     extractFromSpec: (spec: any, event: any) => TelemetrySpecMetadata,
     updateSpecList: (specMetadata: TelemetrySpecMetadata) => void,
-    sendTracing: (spec: TelemetrySpecMetadata) => Promise<void | string>
+    sendTracing: (spec: TelemetrySpecMetadata) => Promise<void | boolean | string>
 }
 
 function TelemetryCollector(apiKey: string, serviceName: string, host: string): TelemetryCollector {
@@ -114,10 +114,8 @@ function TelemetryCollector(apiKey: string, serviceName: string, host: string): 
             this.specList.push(specMetadata);
           }
         },
-        async sendTracing(spec: TelemetrySpecMetadata) {
+        async sendTracing(spec: TelemetrySpecMetadata): Promise<string|void|boolean> {
           return new Promise((resolve, reject) => {
-            const endpoint = "https://trace-api.newrelic.com/trace/v1";
-            const headers = `-H "Content-Type: application/json" -H "Api-Key: ${this.API_KEY}" -H "Data-Format: newrelic" -H "Data-Format-Version: 1"`
             const tracingSpec = {
               id: spec.mi_id,
               'trace.id': spec.tx_id,
@@ -142,23 +140,34 @@ function TelemetryCollector(apiKey: string, serviceName: string, host: string): 
                 spans: [tracingSpec],
               }
             ];
-            const curlStr = `curl -i ${headers} -X POST -d '${JSON.stringify(baseData)}' '${endpoint}'`;
-            exec(curlStr, (err, stdout, stderr) => {
-              if (err) {
-                console.log(err)
-                reject(err);
-              }
-              if (stderr) {
-                console.log(stderr)
-                reject(stderr);
-              }
-              if (stdout) {
-                console.log(stdout);
-                resolve(stdout);
-              }
+            const requestData = JSON.stringify(baseData);
+            const options = {
+              hostname: 'trace-api.newrelic.com',
+              port: 443,
+              path: '/trace/v1',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Api-Key': this.API_KEY,
+                'Data-Format': 'newrelic',
+                'Data-Format-Version': '1',
+              },
+            };
+            const httpRequest = request(options, (res: any) => {
+              // res.on('data', (d: any) => console.log(d));
+            })
+
+            httpRequest.on('error', (err: any) => {
+              console.log(err)
+              reject(err);
+            });
+
+            httpRequest.end(requestData, () => {
+              console.log('Finished successfully')
+              resolve(true);
             })
           })
-        }
+        },
     }
 }
 
