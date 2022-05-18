@@ -1,6 +1,6 @@
 {
   "name": "@seneca/telemetry-newrelic",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/newrelic.js",
   "type": "commonjs",
   "types": "dist/newrelic.d.ts",
