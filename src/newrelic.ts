@@ -15,6 +15,10 @@ function addSegment(spec: Spec) {
     const origfunc = ctx.actdef.func
     const meta = data.meta
     const context = ctx.seneca.context
+    
+    if(ctx.actdef.func.$$newrelic_wrapped$$) {
+      return
+    }
 
     // ensure each action has it's own endSegment
     context.newrelic = context.newrelic || {}
@@ -33,6 +37,8 @@ function addSegment(spec: Spec) {
         },
         function endSegmentHandler() { }
       )
+
+      ctx.actdef.func.$$newrelic_wrapped$$ = true;
     }
 
     Object.defineProperty(
