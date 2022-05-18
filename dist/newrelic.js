@@ -13,7 +13,7 @@ function addSegment(spec) {
         const origfunc = ctx.actdef.func;
         const meta = data.meta;
         const context = ctx.seneca.context;
-        if (ctx.actdef.func.$$wrapped) {
+        if (ctx.actdef.func.$$newrelic_wrapped$$) {
             return;
         }
         // ensure each action has it's own endSegment
@@ -26,7 +26,7 @@ function addSegment(spec) {
                 endSegmentMap[meta.mi].endSegmentHandler = endSegmentHandler;
                 return origfunc.call(instance, ...args);
             }, function endSegmentHandler() { });
-            ctx.actdef.func.$$wrapped = true;
+            ctx.actdef.func.$$newrelic_wrapped$$ = true;
         };
         Object.defineProperty(ctx.actdef.func, 'name', { value: 'newrelic_' + origfunc.name });
     }

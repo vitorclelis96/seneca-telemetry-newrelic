@@ -16,7 +16,7 @@ function addSegment(spec: Spec) {
     const meta = data.meta
     const context = ctx.seneca.context
     
-    if(ctx.actdef.func.$$wrapped) {
+    if(ctx.actdef.func.$$newrelic_wrapped$$) {
       return
     }
 
@@ -38,7 +38,7 @@ function addSegment(spec: Spec) {
         function endSegmentHandler() { }
       )
 
-      ctx.actdef.func.$$wrapped = true;
+      ctx.actdef.func.$$newrelic_wrapped$$ = true;
     }
 
     Object.defineProperty(
