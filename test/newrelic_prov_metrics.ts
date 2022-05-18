@@ -37,10 +37,10 @@ const s01 = Seneca()
 // s01.act('sys:provider,provider:newrelic,record:metric,type:count,value:1,name:Custom/Test')
 
 // Gauge test
-s01.act('plugin:newrelic,api:metrics,type:gauge,value:5,name:custom.seneca.counter')
+s01.act("plugin:newrelic,api:metrics,type:gauge,value:2,name:custom.seneca.counter,attributes:{'user.name': 'Vitor', age: 26}")
 
 // Summary test
-s01.act('plugin:newrelic,api:metrics,type:summary,name:custom.seneca.countsumm,sum:1');
+s01.act('plugin:newrelic,api:metrics,type:summary,name:custom.seneca.countsumm,value:{sum: 1}');
 
 // Count test
 s01.act('plugin:newrelic,api:metrics,type:count,name:custom.seneca.countpp,value:10');

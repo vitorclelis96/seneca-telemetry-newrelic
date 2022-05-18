@@ -268,6 +268,7 @@ function newrelic(this: any, options: NewRelicOptions) {
     seneca
         .message('plugin:newrelic,get:info', get_info)
         .message('plugin:newrelic,api:metrics', metric_handler)
+        .message('plugin:newrelic,api:metrics', metrics_validation)
 
     async function get_info(this: any, _msg: any) {
         return {
@@ -279,13 +280,13 @@ function newrelic(this: any, options: NewRelicOptions) {
         }
     }
 
-    const metricBatchBuilder = (metric: MetricBase<any>) => {
+    const _metricBatchBuilder = (metric: MetricBase<any>) => {
       const batch = new MetricBatch({}, Date.now(), 1000);
       batch.addMetric(metric)
       return batch;
     };
 
-    const sendBatch = (batch: MetricBatch) => {
+    const _sendBatch = (batch: MetricBatch) => {
       seneca.metricsClient.send(batch, (err: any, res: any, body: any) => {
       if (err) {
           console.log('aq', err);
@@ -297,24 +298,18 @@ function newrelic(this: any, options: NewRelicOptions) {
 
     async function metric_count_handler(name: string, value: number, attributes?: any) {
       const countMetrics = new CountMetric(name, value, attributes || {});
-      const batch = metricBatchBuilder(countMetrics);
-      sendBatch(batch);
+      const batch = _metricBatchBuilder(countMetrics);
+      _sendBatch(batch);
     }
 
     async function metric_gauge_handler(name: string, value: number, attributes?: any) {
       const gaugeMetric = new GaugeMetric(name, value, attributes || {});
-      const batch = metricBatchBuilder(gaugeMetric);
-      sendBatch(batch);
+      const batch = _metricBatchBuilder(gaugeMetric);
+      _sendBatch(batch);
     }
 
-    async function metric_summary_handler(name: string, value: SummaryValue, attributes?: any) {
-        const summaryMetrics = new SummaryMetric(name, value, attributes || {});
-        const batch = metricBatchBuilder(summaryMetrics);
-        sendBatch(batch);
-    }
-
-    async function metric_handler(this: any, msg: any) {
-      const extractSummaryData = (): SummaryValue => {
+    async function metric_summary_handler(name: string, msg: any, attributes?: any) {
+      const extractSummaryData = (msg: any): SummaryValue => {
         const { count, sum, min, max } = msg;
         return {
           count: count || 0,
@@ -323,20 +318,39 @@ function newrelic(this: any, options: NewRelicOptions) {
           max: max || -Infinity ,
         };
       }
+      const summaryData = extractSummaryData(msg);
+      const summaryMetrics = new SummaryMetric(name, summaryData, attributes || {});
+      const batch = _metricBatchBuilder(summaryMetrics);
+      _sendBatch(batch);
+    }
+
+    async function metrics_validation(this: any, msg: any) {
+      const validTypes = ['gauge', 'count', 'summary'];
       const { type, name, value, attributes } = msg;
-      if (!type || !name || (!value && type !== 'summary')) {
-        throw new Error(`
-          Invalid pattern, please make sure you provide type:(gauge|count|summary),name:string,value:(number|string)
-        `)
+      if (!type || !name || !value) {
+        throw new Error('Invalid pattern, please make sure you provide type:(gauge|count|summary),name:string,value:object|number');
       }
+      if (!validTypes.includes(type)) {
+        throw new Error('Invalid type, please provide type:(gauge|count|summary)');
+      }
+      if (type === 'summary' && typeof value !== 'object') {
+        throw new Error('type:summary required that value parameter must be an object');
+      }
+      if (attributes && typeof attributes !== 'object') {
+        throw new Error('attributes parameter must be an object');
+      }
+      return this.prior(msg);
+    }
+
+    async function metric_handler(this: any, msg: any) {
+      const { type, name, value, attributes } = msg;
       switch (type) {
         case 'count':
           return metric_count_handler(name, value, attributes);
         case 'gauge':
           return metric_gauge_handler(name, value, attributes);
         case 'summary':
-          const summaryData = extractSummaryData();
-          return metric_summary_handler(name, summaryData, attributes);
+          return metric_summary_handler(name, msg, attributes);
         default:
           throw new Error('Invalid or missing type');
       }
