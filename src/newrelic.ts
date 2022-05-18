@@ -28,10 +28,46 @@ interface NewrelicSegmentApi {
     ENABLED: boolean,
 }
 
+function addSegment(spec: Spec) {
+  if (spec.ctx.actdef?.func) {
+    const { ctx, data } = spec
+    const pattern = ctx.actdef.pattern
+    const origfunc = ctx.actdef.func
+    const meta = data.meta
+    const context = ctx.seneca.context
+    
+    if(ctx.actdef.func.$$newrelic_wrapped$$) {
+      return
+    }
+
+    // ensure each action has it's own endSegment
+    context.newrelic = context.newrelic || {}
+    let endSegmentMap =
+      (context.newrelic.endSegmentMap = context.newrelic.endSegmentMap || {})
+
+    ctx.actdef.func = function(this: any, ...args: any) {
+      const instance = this
+      NewRelic.startSegment(
+        pattern + '~' + origfunc.name,
+        true,
+        function handler(endSegmentHandler: any) {
+          endSegmentMap[meta.mi] = (endSegmentMap[meta.mi] || {})
+          endSegmentMap[meta.mi].endSegmentHandler = endSegmentHandler
+          return origfunc.call(instance, ...args)
+        },
+        function endSegmentHandler() { }
+      )
+
+      ctx.actdef.func.$$newrelic_wrapped$$ = true;
+    }
+  }
+}
+
 interface NewrelicMetricsApi {
   ENABLED: boolean,
   ACCOUNT_API_KEY: string,
 }
+
 interface TelemetrySpecMetadata {
     id: string,
     tx_id: string,
