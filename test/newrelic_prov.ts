@@ -8,10 +8,10 @@ const s01 = Seneca()
     .use('promisify')
     .use(NewrelicProvider, {
         tracing: {
-            ENABLED: true,
-            ACCOUNT_API_KEY: 'YOU API KEY',
-            SERVICE_NAME: 'ORDU_TRACING_TEST',
-            HOST: 'LOCALHOST',
+          enabled: true,
+          accountApiKey: 'YOU API KEY',
+          serviceName: 'ORDU_TRACING_TEST',
+          host: 'LOCALHOST',
         }
     })
     // Basic message 

@@ -8,24 +8,29 @@ import { SummaryValue } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics
 import { MetricBase } from '@newrelic/telemetry-sdk/dist/src/telemetry/metrics/metric';
 
 type NewRelicOptions = {
-    tracing?: NewrelicTracingApi,
-    segment?: NewrelicSegmentApi,
-    metrics?: NewrelicMetricsApi,
-    debug: boolean,
+  tracing?: NewrelicTracingApi,
+  segment?: NewrelicSegmentApi,
+  metrics?: NewrelicMetricsApi,
+  debug: boolean,
 };
 
 type Spec = Record<any, any>
 type Nullable<T> = T | null
 
 interface NewrelicTracingApi {
-    ENABLED: boolean,
-    ACCOUNT_API_KEY: string,
-    SERVICE_NAME: string,
-    HOST: string,
+  enabled: boolean,
+  accountApiKey: string,
+  serviceName: string,
+  host: string,
 }
 
 interface NewrelicSegmentApi {
-    ENABLED: boolean,
+  enabled: boolean,
+}
+
+interface NewrelicMetricsApi {
+  enabled: boolean,
+  accountApiKey: string,
 }
 
 function addSegment(spec: Spec) {
@@ -61,11 +66,6 @@ function addSegment(spec: Spec) {
       ctx.actdef.func.$$newrelic_wrapped$$ = true;
     }
   }
-}
-
-interface NewrelicMetricsApi {
-  ENABLED: boolean,
-  ACCOUNT_API_KEY: string,
 }
 
 interface TelemetrySpecMetadata {
@@ -189,9 +189,7 @@ function TelemetryCollector(apiKey: string, serviceName: string, host: string): 
                 'Data-Format-Version': '1',
               },
             };
-            const httpRequest = request(options, (res: any) => {
-              // res.on('data', (d: any) => console.log(d));
-            })
+            const httpRequest = request(options, (res: any) => {});
 
             httpRequest.on('error', (err: any) => {
               console.log(err)
@@ -261,68 +259,68 @@ function changeSpec(spec: Spec, event: "inward" | "outward") {
 }
 
 function preload(this: any, opts: any) {
-    const seneca = this;
-    const { options }: { options: NewRelicOptions } = opts;
-    const segmentIsEnabled = options && options.segment && options.segment.ENABLED;
-    const tracingIsEnabled = options && options.tracing && options.tracing.ENABLED;
-    const metricsIsEnabled = options && options.metrics && options.metrics.ENABLED;
-    
-    let telemetryCollector: Nullable<ReturnType<typeof TelemetryCollector>> = null;
-    if (tracingIsEnabled && options.tracing) {
-        const { ACCOUNT_API_KEY, SERVICE_NAME, HOST } = options.tracing;
-        telemetryCollector = TelemetryCollector(
-            ACCOUNT_API_KEY, SERVICE_NAME, HOST
-        );
-    }
-
-    seneca.order.inward.add((spec: Spec) => {
-        if (segmentIsEnabled) {
-            changeSpec(spec, 'inward').addSegments();
-        }
-        if (telemetryCollector) {
-            const specMetadata = telemetryCollector.extractFromSpec(spec, 'inward');
-            telemetryCollector.updateSpecList(specMetadata);
-        }
-    })
-
-    seneca.order.outward.add((spec: Spec) => {
-        if (segmentIsEnabled) {
-            changeSpec(spec, 'outward').endSegments()
-        }
-        if (telemetryCollector) {
-            const specMetadata = telemetryCollector.extractFromSpec(spec, 'outward');
-            telemetryCollector.updateSpecList(specMetadata);
-        }
-    })
-
-    if (metricsIsEnabled) {
-      if (!options.metrics?.ACCOUNT_API_KEY) {
-        throw new Error("Please provide ACCOUNT_API_KEY parameter to Metrics API");
-      }
-      const metricsClient = new MetricClient({
-        apiKey: options.metrics.ACCOUNT_API_KEY,
-      })
+  const seneca = this;
+  const { options }: { options: NewRelicOptions } = opts;
+  const segmentIsEnabled = options && options.segment && options.segment.enabled;
+  const tracingIsEnabled = options && options.tracing && options.tracing.enabled;
+  const metricsIsEnabled = options && options.metrics && options.metrics.enabled;
   
-      this.metricsClient = metricsClient;
+  let telemetryCollector: Nullable<ReturnType<typeof TelemetryCollector>> = null;
+  if (tracingIsEnabled && options.tracing) {
+    const { accountApiKey, serviceName, host } = options.tracing;
+    telemetryCollector = TelemetryCollector(
+      accountApiKey, serviceName, host
+    );
+  }
+
+  seneca.order.inward.add((spec: Spec) => {
+      if (segmentIsEnabled) {
+          changeSpec(spec, 'inward').addSegments();
+      }
+      if (telemetryCollector) {
+          const specMetadata = telemetryCollector.extractFromSpec(spec, 'inward');
+          telemetryCollector.updateSpecList(specMetadata);
+      }
+  })
+
+  seneca.order.outward.add((spec: Spec) => {
+      if (segmentIsEnabled) {
+          changeSpec(spec, 'outward').endSegments()
+      }
+      if (telemetryCollector) {
+          const specMetadata = telemetryCollector.extractFromSpec(spec, 'outward');
+          telemetryCollector.updateSpecList(specMetadata);
+      }
+  })
+
+  if (metricsIsEnabled) {
+    if (!options.metrics?.accountApiKey) {
+      throw new Error("Please provide accountApiKey parameter to Metrics API");
     }
+    const metricsClient = new MetricClient({
+      apiKey: options.metrics.accountApiKey,
+    })
+
+    this.metricsClient = metricsClient;
+  }
 }
 
 function newrelic(this: any, options: NewRelicOptions) {
     const seneca: any = this
 
     seneca
-        .message('plugin:newrelic,get:info', get_info)
-        .message('plugin:newrelic,api:metrics', metric_handler)
-        .message('plugin:newrelic,api:metrics', metrics_validation)
+      .message('plugin:newrelic,get:info', get_info)
+      .message('plugin:newrelic,api:metrics', metric_handler)
+      .message('plugin:newrelic,api:metrics', metrics_validation)
 
     async function get_info(this: any, _msg: any) {
-        return {
-            ok: true,
-            name: 'newrelic',
-            details: {
-                sdk: 'newrelic'
-            }
+      return {
+        ok: true,
+        name: 'newrelic',
+        details: {
+          sdk: 'newrelic'
         }
+      }
     }
 
     const _metricBatchBuilder = (metric: MetricBase<any>) => {
@@ -333,11 +331,12 @@ function newrelic(this: any, options: NewRelicOptions) {
 
     const _sendBatch = (batch: MetricBatch) => {
       seneca.metricsClient.send(batch, (err: any, res: any, body: any) => {
-      if (err) {
+        // TODO: Implement some logging to handle failed batches
+        if (err) {
           console.log('aq', err);
-      }
-          console.log(res.statusCode);
-          console.log(body);
+        }
+        console.log(res.statusCode);
+        console.log(body);
       })
     }
 

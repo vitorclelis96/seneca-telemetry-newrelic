@@ -8,8 +8,8 @@ const s01 = Seneca()
     .use('promisify')
     .use(newrelicPlugin, {
         metrics: {
-            ENABLED: true,
-            ACCOUNT_API_KEY: 'd2f92475f00f51add8f4b3e3235982a03990NRAL',
+          enabled: true,
+          accountApiKey: 'YOUR API KEY',
         }
     })
     // Basic message 
