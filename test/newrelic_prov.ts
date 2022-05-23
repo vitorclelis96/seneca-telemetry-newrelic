@@ -9,9 +9,8 @@ const s01 = Seneca()
     .use(NewrelicProvider, {
         tracing: {
           enabled: true,
-          accountApiKey: 'YOU API KEY',
-          serviceName: 'ORDU_TRACING_TEST',
-          host: 'LOCALHOST',
+          accountApiKey: 'YOUR API KEY',
+          serviceName: 'NEWRELIC_TRACING_TEST_2',
         }
     })
     // Basic message 

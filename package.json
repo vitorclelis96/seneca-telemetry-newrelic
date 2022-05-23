@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@newrelic/telemetry-sdk": "0.6.0",
+    "gubu": "2.0.1",
     "newrelic": "8.10.0"
   }
 }
