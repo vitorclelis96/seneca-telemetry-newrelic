@@ -9,7 +9,7 @@ const s01 = Seneca()
     .use(newrelicPlugin, {
         events: {
           enabled: true,
-          accountApiKey: 'd2f92475f00f51add8f4b3e3235982a03990NRAL',
+          accountApiKey: 'YOUR API KEY',
         }
     })
     // Basic message 
