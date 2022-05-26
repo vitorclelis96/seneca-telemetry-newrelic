@@ -1,7 +1,8 @@
 import { CountMetric, GaugeMetric, MetricBatch, MetricClient, SummaryMetric } from "@newrelic/telemetry-sdk/dist/src/telemetry/metrics";
 import { MetricBase } from "@newrelic/telemetry-sdk/dist/src/telemetry/metrics/metric";
+import { BaseMetricsResponse } from "./types";
 
-export default function MetricsCollector(metricApiKey: string) {
+export function MetricsCollector(metricApiKey: string) {
   const metricsClient = new MetricClient({
     apiKey: metricApiKey,
   });
@@ -40,7 +41,7 @@ export default function MetricsCollector(metricApiKey: string) {
     return batch;
   };
 
-  const _sendBatch = async (batch: MetricBatch) => {
+  const _sendBatch = (batch: MetricBatch): Promise<BaseMetricsResponse> => {
     return new Promise((resolve, reject) => {
       metricsClient.send(batch, (err: any, res: any, body: any) => {
         const response = {

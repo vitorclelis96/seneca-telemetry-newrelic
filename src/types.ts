@@ -2,6 +2,7 @@ export type NewRelicOptions = {
   tracing?: NewrelicTracingApi,
   segment?: NewrelicSegmentApi,
   metrics?: NewrelicMetricsApi,
+  events?: NewrelicEventsApi,
   debug: boolean,
 };
 
@@ -19,6 +20,11 @@ export interface NewrelicSegmentApi {
 }
 
 export interface NewrelicMetricsApi {
+  enabled: boolean,
+  accountApiKey: string,
+}
+
+export interface NewrelicEventsApi {
   enabled: boolean,
   accountApiKey: string,
 }
@@ -48,5 +54,11 @@ export interface TelemetrySpecMetadata {
   manualStartTime?: number,
   startTime?: string,
   dispatched?: boolean,
+}
+
+export interface BaseMetricsResponse {
+  err?: any,
+  statusCode?: any,
+  body?: any,
 }
 

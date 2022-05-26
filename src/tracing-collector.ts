@@ -3,16 +3,18 @@ import { Spec, TelemetrySpecMetadata } from "./types";
 
 const ERROR_FAIL_TO_EXTRACT_JSON = "Error: Invalid JSON parsing;";
 
-export default class TracingCollector {
+export class TracingCollector {
+  seneca: any;
   serviceName: string;
   specList: TelemetrySpecMetadata[] = [];
   spanClient: SpanClient;
 
-  constructor(apiKey: string, serviceName: string) {
+  constructor(seneca: any, apiKey: string, serviceName: string) {
     this.serviceName = serviceName;
     this.spanClient = new SpanClient({
       apiKey,
     });
+    this.seneca = seneca;
   }
 
   extractFullMessage(spec: any) {
@@ -62,7 +64,7 @@ export default class TracingCollector {
           spec.dispatched = true;
           this._clearQueue();
         } catch (error) {
-          console.log(error);
+          this.seneca.log.error(error);
         }
       }
     } else {
@@ -100,17 +102,14 @@ export default class TracingCollector {
         }
       );
       spanBatch.addSpan(span);
-      this.spanClient.send(spanBatch, (err: any, res: any, body: any) => {
-        if (err) {
-          console.log('err', err)
+      this.spanClient.send(spanBatch, (error: any, res: any, body: any) => {
+        if (error) {
+          this.seneca.log.error(error);
         }
         resolve(res.statusCode);
-        console.log(res.statusCode);
-        console.log(body);
       })
     })
   }
-  // TODO: Clear queue function
 
 
 

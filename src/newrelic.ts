@@ -2,10 +2,13 @@
 
 
 import NewRelic from 'newrelic';
-import { NewRelicOptions, Nullable, Spec } from './types';
-import TracingCollector from './TracingCollector';
 import { Required, Skip, Some } from 'gubu';
-import MetricsCollector from './MetricsCollector';
+
+import { TracingCollector } from './tracing-collector';
+import { MetricsCollector } from './metrics-collector';
+import { EventsCollector } from './events-collector';
+
+import { NewRelicOptions, Nullable, Spec } from './types';
 
 function addSegment(spec: Spec) {
   if (spec.ctx.actdef?.func) {
@@ -64,12 +67,13 @@ function preload(this: any, opts: any) {
   const segmentIsEnabled = options && options.segment && options.segment.enabled;
   const tracingIsEnabled = options && options.tracing && options.tracing.enabled;
   const metricsIsEnabled = options && options.metrics && options.metrics.enabled;
+  const eventsIsEnabled = options && options.events && options.events.enabled;
   
   let tracingCollector: Nullable<TracingCollector> = null;
   if (tracingIsEnabled && options.tracing) {
     const { accountApiKey, serviceName } = options.tracing;
     tracingCollector = new TracingCollector(
-      accountApiKey, serviceName
+      seneca, accountApiKey, serviceName
     );
   }
 
@@ -97,6 +101,13 @@ function preload(this: any, opts: any) {
     }
     this.metrics_api_key = options.metrics.accountApiKey;
   }
+
+  if (eventsIsEnabled) {
+    if (!options.events?.accountApiKey) {
+      throw new Error("Please provide accountApiKey parameter to Events API");
+    }
+    this.events_api_key = options.events.accountApiKey;
+  }
 }
 
 function newrelic(this: any, options: NewRelicOptions) {
@@ -111,16 +122,16 @@ function newrelic(this: any, options: NewRelicOptions) {
           plugin: 'newrelic',
           api: 'metric',
           type: 'count',
-          value: Required(Number),
-          name: Required(String),
+          value: Number,
+          name: String,
           attributes: Skip({}),
         }, metric_count_handler)
         .message({
           plugin: 'newrelic',
           api: 'metric',
           type: 'gauge',
-          value: Required(Number),
-          name: Required(String),
+          value: Number,
+          name: String,
           attributes: Skip({}),
         }, metric_gauge_handler)
         .message({
@@ -133,9 +144,19 @@ function newrelic(this: any, options: NewRelicOptions) {
             min: Skip(Number),
             max: Skip(Number),
           }),
-          name: Required(String),
+          name: String,
           attributes: Skip({})
         }, metric_summary_handler);
+    }
+    if (seneca.events_api_key) {
+      const { event_handler } = EventsCollector(seneca.events_api_key);
+      seneca
+        .message({
+          plugin: 'newrelic',
+          api: 'event',
+          eventType: String,
+          attributes: Some({}),
+        }, event_handler)
     }
 
     async function get_info(this: any, _msg: any) {
@@ -157,9 +178,24 @@ function newrelic(this: any, options: NewRelicOptions) {
 
 // Default options.
 const defaults: NewRelicOptions = {
-
-    // TODO: Enable debug logging
-    debug: false
+  tracing: {
+    enabled: false,
+    accountApiKey: '',
+    serviceName: '',
+  },
+  events: {
+    enabled: false,
+    accountApiKey: '',
+  },
+  metrics: {
+    accountApiKey: '',
+    enabled: false,
+  },
+  segment: {
+    enabled: false,
+  },
+  // TODO: Enable debug logging
+  debug: false
 }
 
 Object.assign(newrelic, {defaults, preload})
