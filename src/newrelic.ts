@@ -63,7 +63,15 @@ function preload(this: any, opts: any) {
 function newrelic(this: any, options: NewRelicOptions) {
     const seneca: any = this
 
-    seneca.message('plugin:newrelic,get:info', get_info)
+    seneca
+      .message('plugin:newrelic,get:info', get_info)
+      .message({
+        sys:'telemetry',
+        telemetry:'newrelic',
+        active: Boolean
+      }, async function onOff(this: any, msg: any) {
+        Segments.emmiter().emit('statusChange', msg.active)
+      })
 
     if (seneca.metrics_api_key) {
       const { metric_count_handler, metric_summary_handler, metric_gauge_handler} = MetricsCollector(seneca.metrics_api_key);
