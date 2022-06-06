@@ -5,6 +5,7 @@ import NewRelic from 'newrelic';
 import { Required, Skip, Some } from 'gubu';
 
 import { TracingCollector } from './tracing-collector';
+import { Segments } from './segments/segments';
 import { MetricsCollector } from './metrics-collector';
 import { EventsCollector } from './events-collector';
 
@@ -14,10 +15,16 @@ import { NewRelicOptions, Nullable, Spec } from './types';
 function preload(this: any, opts: any) {
   const seneca = this;
   const { options }: { options: NewRelicOptions } = opts;
-  const segmentIsEnabled = options && options.segment && options.segment.enabled;
-  const tracingIsEnabled = options && options.tracing && options.tracing.enabled;
-  const metricsIsEnabled = options && options.metrics && options.metrics.enabled;
-  const eventsIsEnabled = options && options.events && options.events.enabled;
+  const isPluginActive = options && options.active
+  const segmentIsEnabled = isPluginActive && options.segment && options.segment.enabled;
+  const tracingIsEnabled = isPluginActive && options.tracing && options.tracing.enabled;
+  const metricsIsEnabled = isPluginActive && options.metrics && options.metrics.enabled;
+  const eventsIsEnabled = isPluginActive && options.events && options.events.enabled;
+
+  const segments = Segments.emmiter()
+  
+  // if segment is enabled, defines initial tasks for inward/outward
+  segments.emit('statusChange', segmentIsEnabled)
   
   let tracingCollector: Nullable<TracingCollector> = null;
   if (tracingIsEnabled && options.tracing) {
@@ -28,18 +35,16 @@ function preload(this: any, opts: any) {
   }
 
   seneca.order.inward.add((spec: Spec) => {
-    if (segmentIsEnabled) {
-      addSegment(spec);
-    }
+    segments.inward(spec)
+
     if (tracingCollector) {
       tracingCollector.dispatch(spec, 'inward');
     }
   })
 
-  seneca.order.outward.add((spec: Spec) => {
-    if (segmentIsEnabled) {
-      endSegment(spec);
-    }
+  seneca.order.outward.add((spec: Spec) => {    
+    segments.outward(spec)
+
     if (tracingCollector) {
       tracingCollector.dispatch(spec, 'outward');
     }
@@ -136,6 +141,7 @@ function newrelic(this: any, options: NewRelicOptions) {
 
 // Default options.
 const defaults: NewRelicOptions = {
+  active: true,
   tracing: {
     enabled: false,
     accountApiKey: '',
