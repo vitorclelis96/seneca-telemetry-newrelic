@@ -2,7 +2,7 @@
 
 
 import NewRelic from 'newrelic';
-import { Required, Skip, Some } from 'gubu';
+import { Skip, Some } from 'gubu';
 
 import { TracingCollector } from './tracing-collector';
 import { MetricsCollector } from './metrics-collector';
