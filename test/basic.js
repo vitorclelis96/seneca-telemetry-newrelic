@@ -1,11 +1,7 @@
-
-
+const newrelic = require('newrelic')
 const Seneca = require('seneca')
 
-
-// const NewRelicAPI = ???
-
-const sleep = (millis) => new Promise(r=>setTimeout(r,millis))
+const sleep = (millis) => new Promise(r=>setTimeout(r,millis+1000))
 
 let s01 = Seneca()
     .test()
@@ -45,7 +41,6 @@ let s01 = Seneca()
 
 
 run(s01)
-
 
 async function run(seneca) {
   console.log('\n---')
