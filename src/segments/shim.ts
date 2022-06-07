@@ -46,8 +46,6 @@ function shim(): SegmentShim {
       
       Object.defineProperty(
         ctx.actdef.func, 'name', { value: 'newrelic_' + origfunc.name })
-
-      console.log('segment added to ' + ctx.actdef.pattern + '~' + origfunc.name)
     }
   }
   
@@ -61,16 +59,13 @@ function shim(): SegmentShim {
         delete endSegmentMap[meta.mi]
         endSegmentHandler()
       }
-      console.log('segment ended for ' + (context.actdef?.pattern || 'n tem') + '~' + origfunc.name)
     }
   }
   
   function remove_segment(spec: Spec) {
     const { ctx, data } = spec
     if(ctx.actdef.func.$$newrelic_wrapped$$) {
-      console.log('removeSegment')
       spec.ctx.actdef.func = origfunc
-      console.log('segment removed for ' + ctx.actdef.pattern + '~' + origfunc.name)
     }
   }
 
