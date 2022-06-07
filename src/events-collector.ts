@@ -1,4 +1,3 @@
-import { events } from "@newrelic/telemetry-sdk/dist/src/telemetry";
 import { Event, EventBatch, EventClient } from "@newrelic/telemetry-sdk/dist/src/telemetry/events";
 import { BaseMetricsResponse } from "./types";
 
