@@ -1,4 +1,5 @@
 export type NewRelicOptions = {
+  active: boolean,
   tracing?: NewrelicTracingApi,
   segment?: NewrelicSegmentApi,
   metrics?: NewrelicMetricsApi,
